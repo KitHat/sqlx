@@ -16,6 +16,7 @@ use std::{
     convert::TryFrom,
     ptr::{null, null_mut},
 };
+use log::{info, error};
 
 pub(crate) async fn establish(options: &SqliteConnectOptions) -> Result<SqliteConnection, Error> {
     let mut filename = options
@@ -60,6 +61,8 @@ pub(crate) async fn establish(options: &SqliteConnectOptions) -> Result<SqliteCo
     let handle = blocking!({
         let mut handle = null_mut();
 
+        info!("SQLITE: Opening database {:?}, flags {:?}", filename.as_str(), flags as u64);
+
         // <https://www.sqlite.org/c3ref/open.html>
         let mut status = unsafe {
             sqlite3_open_v2(
@@ -70,8 +73,10 @@ pub(crate) async fn establish(options: &SqliteConnectOptions) -> Result<SqliteCo
             )
         };
 
+
         if handle.is_null() {
             // Failed to allocate memory
+            error!("SQLITE: Unable to allocate handle for database {:?}", filename.as_str());
             panic!("SQLite is unable to allocate memory to hold the sqlite3 object");
         }
 
@@ -80,6 +85,7 @@ pub(crate) async fn establish(options: &SqliteConnectOptions) -> Result<SqliteCo
         let handle = unsafe { ConnectionHandle::new(handle) };
 
         if status != SQLITE_OK {
+            error!("SQLITE: Unable to open database {:?}, handle {:?}, status {:?}", filename.as_str(), handle.0.as_ptr(), status);
             return Err(Error::Database(Box::new(SqliteError::new(handle.as_ptr()))));
         }
 
@@ -102,8 +108,11 @@ pub(crate) async fn establish(options: &SqliteConnectOptions) -> Result<SqliteCo
         status = unsafe { sqlite3_busy_timeout(handle.0.as_ptr(), ms) };
 
         if status != SQLITE_OK {
+            error!("SQLITE: Unable to open database {:?}, handle {:?}, status {:?}", filename.as_str(), handle.0.as_ptr(), status);
             return Err(Error::Database(Box::new(SqliteError::new(handle.as_ptr()))));
         }
+
+        info!("SQLITE: Successfully opened database {:?}, handle {:?}", filename.as_str(), handle.0.as_ptr());
 
         Ok(handle)
     })?;

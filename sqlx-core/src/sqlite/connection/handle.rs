@@ -2,6 +2,8 @@ use std::ptr::NonNull;
 
 use libsqlite3_sys::{sqlite3, sqlite3_close, SQLITE_OK};
 
+use log::{info, error};
+
 use crate::sqlite::SqliteError;
 
 /// Managed handle to the raw SQLite3 database handle.
@@ -36,12 +38,15 @@ impl Drop for ConnectionHandle {
     fn drop(&mut self) {
         unsafe {
             // https://sqlite.org/c3ref/close.html
+            info!("SQLITE: Closing connection handle {:?}", self.0.as_ptr());
             let status = sqlite3_close(self.0.as_ptr());
             if status != SQLITE_OK {
                 // this should *only* happen due to an internal bug in SQLite where we left
                 // SQLite handles open
+                error!("SQLITE: Failed to close connection {:?}", self.0.as_ptr());
                 panic!("{}", SqliteError::new(self.0.as_ptr()));
             }
+            info!("SQLITE: Successfully closed connection {:?}", self.0.as_ptr());
         }
     }
 }
