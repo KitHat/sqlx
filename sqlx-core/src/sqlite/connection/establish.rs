@@ -6,7 +6,7 @@ use crate::{
     sqlite::{SqliteConnectOptions, SqliteConnection, SqliteError},
 };
 use libsqlite3_sys::{
-    sqlite3_busy_timeout, sqlite3_extended_result_codes, sqlite3_open_v2, SQLITE_OK,
+    sqlite3_busy_timeout, sqlite3_extended_result_codes, sqlite3_open_v2, sqlite3_system_errno, SQLITE_OK,
     SQLITE_OPEN_CREATE, SQLITE_OPEN_MEMORY, SQLITE_OPEN_NOMUTEX, SQLITE_OPEN_PRIVATECACHE,
     SQLITE_OPEN_READONLY, SQLITE_OPEN_READWRITE, SQLITE_OPEN_SHAREDCACHE,
 };
@@ -85,6 +85,10 @@ pub(crate) async fn establish(options: &SqliteConnectOptions) -> Result<SqliteCo
         let handle = unsafe { ConnectionHandle::new(handle) };
 
         if status != SQLITE_OK {
+            unsafe {
+                let err = sqlite3_system_errno(handle.0.as_ptr());
+                error!("SQLITE: {:?}", err);
+            }
             error!("SQLITE: Unable to open database {:?}, handle {:?}, status {:?}", filename.as_str(), handle.0.as_ptr(), status);
             return Err(Error::Database(Box::new(SqliteError::new(handle.as_ptr()))));
         }

@@ -154,7 +154,10 @@ impl<DB: Database> SharedPool<DB> {
             }),
         )
         .await
-        .map_err(|_| Error::PoolTimedOut)
+        .map_err(|e| {
+            log::error!("wait_for_conn timeout {:?}", e);
+            Error::PoolTimedOut
+        })
     }
 
     pub(super) fn new_arc(
@@ -252,7 +255,10 @@ impl<DB: Database> SharedPool<DB> {
             Ok(Err(e)) => Err(e),
 
             // timed out
-            Err(_) => Err(Error::PoolTimedOut),
+            Err(_) => {
+                log::error!("error during executing connect statement");
+                Err(Error::PoolTimedOut)
+            },
         }
     }
 }

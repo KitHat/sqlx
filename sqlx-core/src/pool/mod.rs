@@ -330,6 +330,10 @@ fn deadline_as_timeout<DB: Database>(deadline: Instant) -> Result<Duration, Erro
     deadline
         .checked_duration_since(Instant::now())
         .ok_or(Error::PoolTimedOut)
+        .map_err(|e| {
+            log::error!("Timeouted on deadline_as_timeout");
+            e
+        })
 }
 
 #[test]
